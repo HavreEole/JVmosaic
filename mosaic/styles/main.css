@@ -1,0 +1,533 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #4b4e6d;
+    font-family: arial, sans-serif;
+}
+
+* {
+    box-sizing:border-box;
+}
+
+@media (min-width: 800px) {
+    body {
+        background: url('../img/bg.png'), #4b4e6d;
+    }
+}
+
+@font-face {
+    font-family: titleFont;
+    /*src: url(geosanslight.ttf);*/
+    src: url(essence-sans.ttf);
+}
+
+
+
+    /* NAVIGATION */
+
+    header {
+        position: fixed;
+        width: 100%;
+        height: 40px;
+        background-color: #28afb0;
+        border-bottom: 5px solid #48d0d1;
+        z-index: 100;
+    }
+
+    main {
+        display: block; /* IE */
+        background: url('../img/bg3.png') 0 34px repeat-x, #eee5e5;
+    }
+
+    footer {
+        height: 40px;
+        background-color: #19647e;
+        border-top: 5px solid #218c9a;
+        border-bottom: 1px solid #1a799a;
+        box-shadow: 0 2px 1px #323448;
+    }
+
+        h1 {
+            margin: 40px 0 28px;
+        }
+
+            h1 span {
+                margin-left: 3%;
+                padding: 1px 3%;
+                background-color: #218c9a;
+                border: 0 solid #28afb0;
+                border-width: 0 5px;
+                box-shadow: 4px 4px 0 #dbd3d3;
+                color: white;
+                font-variant: small-caps;
+                font-weight: normal;
+            }
+
+
+
+        /* GRID */ /* TODO vérifier grilles */
+
+        /* sur 6 col */
+        .col-6-2 { width: 31.33%; }
+        .col-6-4 { width: 65.66%; }
+
+        /* (nested) sur 4 col */
+        .col-4-1 { width: 22.75%; }
+        
+        /* marges */
+        [class^="col"] { margin-right: 3%; }
+        .col-6-4 { margin-right: 0; }
+        .col-6-2:last-of-type { margin-right: 0; }
+        #personnesListe [class^="col-4"] {
+            margin-right: 0;
+            margin-left: 2%;
+        }
+
+        @media (max-width: 800px) {
+            [class^="col-6"] {
+                width: 100%;
+                margin : auto;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .col-4-1 {
+                width: 98%;
+                margin-right: 0;
+            }
+        }
+
+        
+
+        /* HEADER */
+
+        header a:first-of-type {
+            float: left;
+            margin: -1px 2% 0;
+            font-family: titleFont, arial, sans-serif;
+            font-size: 2rem;
+            text-decoration: none;
+            text-shadow: 2px 1px 0px #368181;
+        }
+
+        header a:last-of-type {
+            float: right;
+            margin: 6px 2%;
+        }
+
+        header a {
+            color: #e0f8f8;
+        }
+
+        header a:hover {
+            color: white;
+        }
+
+        header a:last-child { /* IE */
+            background-color: #28afb0;
+        }
+
+
+
+        /* FOOTER */
+
+        footer span {
+            display:inline-block;
+            margin: 10px 2%;
+            font-size: 0.8rem;
+            color: #8cd7e5;
+            font-variant: small-caps;
+        }
+
+
+            
+        /* MENU & LIST / PROFIL */
+
+        section {
+            margin: 0 auto;
+            padding-top: 40px;
+            max-width: 1280px;
+        }
+
+            #menuListStyles {
+                display: flex;
+                align-items: stretch;
+                justify-content: space-around; /* IE */
+                justify-content: space-evenly;
+            }
+
+            menu {
+                margin: 0;
+                padding: 0;
+                flex-basis: 16%;
+                min-width: 180px;
+                background: url('../img/bg4.png') 0 -6px repeat-x, #d1c5c5;
+                border: 1px solid #c9bcbc;
+                border-width: 0 1px;
+                overflow: hidden;
+            }
+
+        @media (max-width: 800px) {
+            section, #menuListStyles {
+                display: block;
+            }
+            menu {
+                margin-top: 5px;
+                box-shadow: 0 6px 0 #dbd3d3;
+            }
+        }
+
+
+
+        /* MENU */
+                
+                /* filtrer, défiltrer */
+
+                menu a {
+                    text-decoration: none;
+                }
+
+                    menu a h1 {
+                        background-color: #19647e;
+                            color: #c5e1e2;
+                    }
+
+                    menu a h1:hover {
+                            background-color: #36768d;
+                            color: #dcfdf6;
+                    }
+
+                menu h1 {
+                    margin-top: 0;
+                    padding: 1px 3%;
+                    background-color: #727393;
+                    border-bottom: 1px solid #5e628b;
+                    box-shadow: 0 4px 0 #bcabab;
+                    color: #d0d1ea;
+                    font-variant: small-caps;
+                    font-weight: normal;
+                    font-family: titleFont, arial, sans-serif;
+                    text-align: center;
+                }
+
+                @media (max-width: 800px) {
+                    menu h1 {
+                        margin-bottom: 10px;
+                        text-align: left; /* IE */
+                        font-size: 1.5rem;
+                    }
+                }
+                
+                /* liste de tags */
+
+                menu ul {
+                    list-style-type: none;
+                    margin-left: 4%;
+                    padding: 0;
+                }
+                    
+                    menu ul li {
+                        margin: 3% 0 3% 3%;
+                    }
+
+                    @media (max-width: 800px) {
+                        menu ul li {
+                            display: inline-block;
+                            margin: 1px 5px;
+                        }
+                    }
+
+                        menu ul li a {
+                            padding : 1px 8px 1px 0;
+                            background-color: #4b4e6d;
+                            border-radius: 20px 6px 6px 20px;
+                            box-shadow: 1px 1px 1px #8e7f7f;
+                            color: #d0d1ea;
+                            cursor: pointer;
+                            text-decoration: none;
+                            text-align: center;
+                        }
+
+                        menu ul li a:hover {
+                            background-color: #57597b;
+                            color: #eee5e5;
+                        }
+
+                            menu ul li a span {
+                                display: inline-block;
+                                margin : -2px 5px 0 -5px;
+                                padding: 4px 5px;
+                                min-width: 1.4rem;
+                                background-color: #777893;
+                                border : 1px solid #b0b1d3;
+                                border-width: 0 1px 2px 0;
+                                border-radius: 20px;
+                                font-size: 0.5rem;
+                                color: #2f315d;
+                            }
+
+                        /* tag selectionné */
+
+                        .tagSelect {
+                            background-color: #19647e;
+                            color: #c5e1e2;
+                        }
+
+                        .tagSelect:hover {
+                            background-color: #36768d;
+                            color: #dcfdf6;
+                        }
+
+                    /* "voir plus" */
+
+                    menu ul p {
+                        margin: 16px 0 10px 0;
+                        padding: 2px 0 2px 9px;
+                        background-color: #b7a6a6;
+                        font-size: 0.8rem;
+                        border-radius: 20px 0 0 20px;
+                    }
+
+                    @media (max-width: 800px) {
+                        menu ul p {
+                            display: inline-block;
+                            margin: 3px 0 10px 5px;
+                            padding: 2px 6px 2px 12px;
+                            border-radius: 3px;
+                        }
+                    }
+
+                        menu ul p a {
+                            color: #e6e1e1;
+                            text-decoration: none;
+                        }
+
+                        menu ul p a:hover {
+                            color: #ffffff;
+                            text-decoration: underline;
+                        }
+
+
+
+        /* LIST */
+
+        #personnesListe {
+            text-align: center;
+            padding-bottom: 40px;
+        }
+
+            #personnesListe div {
+                margin-top: 10px;
+                margin-bottom: 10px;
+                display: inline-block;
+                min-width: 180px;
+                vertical-align: top;
+                color: #9f8d8d;
+                text-align: left;
+                opacity: 0.9;
+                cursor: pointer;
+            }
+
+            #personnesListe div:hover { opacity: 1; }
+
+                #personnesListe div img {
+                    width: 100%;
+                    min-height: 100px;
+                    border: 1px solid #dbd3d3;
+                    border-radius: 2px;
+                }
+
+                #personnesListe div span {
+                    margin-top: 5px;
+                    display: inline-block;
+                    width: 100%;
+                    padding: 2px 8px;
+                    background-color: white;
+                    border: 2px solid white;
+                    border-radius: 2px;
+                    box-shadow: 3px 3px 0 #dbd3d3;
+                    overflow: hidden;
+                }
+
+            #personnesListe p {
+                margin: 18px 40px 0;
+                background-color: #b9aaaa;
+                background: linear-gradient(to right, #eee5e5 0%,#b9aaaa 50%,#eee5e5 100%);
+            }
+
+                #personnesListe p a {
+                    padding: 1px 3%;
+                    text-decoration: none;
+                    color: #f2e9e9;
+                }
+
+                #personnesListe p a:hover {
+                    text-decoration: underline;
+                    color: white;
+                }
+
+        @media (max-width: 800px) {
+            #personnesListe h1 span { margin: 0; }
+        }
+        
+        @media (max-width: 400px) {
+            #personnesListe div { margin-bottom: 20px; }
+            #personnesListe div span { margin-top: 0;}
+            #personnesListe h1 {
+                padding: 2px 0;
+                background-color: #218c9a;
+                border: 0 solid #28afb0;
+                border-width: 0 5px;
+                box-shadow: 4px 4px 0 #dbd3d3;
+            }
+            #personnesListe h1 span {
+                padding: 0;
+                margin: 0;
+                background-color: initial;
+                border: none;
+                box-shadow: none;
+            }
+        }
+
+
+
+        /* PROFIL */
+        
+        #profilStyles {
+            max-width: 100%;
+            padding: 40px 0 20px 0;
+        }
+        
+
+            /* menu */
+            #profilStyles menu {
+                margin-top: 0;
+                box-shadow: 0 6px 0 #dbd3d3;
+            }
+            #profilStyles menu h1 { margin: 0; }
+
+
+            /* titre */
+            #profilStyles h1 { text-align: center; }
+            #profilStyles h1 span { margin-left: 0; }
+
+
+            /* containers personne et projets */
+
+            #profilStyles article {
+                width: 100%;
+                margin-top: 40px;
+                margin-bottom: 20px;
+                border-top: 2px solid #8b8db4;
+                border-bottom: 2px solid #3a3b58;
+                background-color: #4b4e6d;
+                box-shadow: 4px 4px 0 #dbd3d3;
+            }
+
+            #profilStyles .projetProfil {
+                border-top-color: #f4e9e9;
+                border-bottom-color: #cbbfbf;
+                background-color: #d1c5c5;
+            }
+
+            #profilStyles article div.wrapper {
+                max-width: 1000px;
+                margin: auto;
+            }
+
+
+                /* parties dans chaque containers */
+
+                #profilStyles article div div {
+                    display: inline-block;
+                    vertical-align: middle;
+                    min-width: 250px;
+                }
+
+                    #profilStyles article div div p {
+                        margin: 15px;
+                        padding: 1px 8px 1px 10px;
+                        border-radius: 2px;
+                        text-align: left;
+                    }
+
+                    .projetProfil div div:first-child p:first-child {
+                        font-variant: small-caps;
+                    }
+
+
+                        /* les textes */
+
+                        #profilStyles article div div p span {
+                            padding: 1px 8px;
+                            margin: 0 10px 0 -10px;
+                            border-radius: 2px 0 0 2px;
+                            background-color: #62b2b2;
+                            color: #0c6464;
+                        }
+
+                        #personneProfil div div p {
+                            background-color: #57597b;
+                            color: #babbd0;
+                        }
+                        .projetProfil div div p {
+                            background-color: #b7a6a6;
+                            color: #2e2323;
+                        }
+
+
+                        /* les liens */
+
+                        #personneProfil div div p a { color: #c6caf2; }
+                        .projetProfil div div p a { color: #4d2222; }
+
+                        #profilStyles article div div p a:hover { color: #fff; }
+
+
+                        /* les listes de tags */
+
+                        #profilStyles p.tagList {
+                            padding-left: 0;
+                            background-color: initial;
+                        }
+
+                        #profilStyles p.tagList span {
+                            display: inline-block;
+                            margin: 2px 10px 2px 0;
+                            border-radius: 2px;
+                            background-color: #218c9a;
+                            color: #c5e1e2;
+                        }
+
+
+                    /* les images */
+
+                    #personneProfil div div:first-child { background-color: #57597b; }
+
+                    .projetProfil div div:last-child { background-color: #b7a6a6; }
+
+                    #profilStyles article div div img {
+                        margin: 5px 1.5% 0 1.5%;
+                        width: 97%;
+                        border-radius: 2px;
+                    }
+
+        @media (max-width: 800px) {
+            #profilStyles { padding: 40px 0 20px 0; }
+            #profilStyles menu h1 { /* IE */
+                text-align: left;
+                font-size: 1.5rem;
+            }
+            #profilStyles article { padding: 0; }
+            #profilStyles article div div { text-align: center; }
+            #profilStyles article div div img {
+                max-width: 450px;
+                border-radius: 2px;
+                border: 0;
+            }
+        }
+        @media (min-width: 800px) {
+            #profilStyles #personneProfil {
+                background: url('../img/bg.png'), #4b4e6d;
+            }
+        }
