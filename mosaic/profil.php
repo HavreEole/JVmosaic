@@ -1,28 +1,25 @@
 <?php
 
-    include("inc/secure.php");
+    include("inc/bridge.php");
 
     include("inc/header.php");
-    echo($afficherHeader('Accueil'));
+    echo($afficherHeader('Annuaire mosaïque - Profil'));
                
         echo("
             <main>
                 <section id='profilStyles'>
                     <menu>
                         <a href='index.php'>
-                            <h1>◃Accueil</h1>
+                            <h3>◃Accueil</h3>
                         </a>
                     </menu>");
         
         $anErrorOccured = false;
-        if (!empty($_GET["num"]) || $_GET["num"] == 0){ // 0 est considéré comme vide...
+        if (testNotEmptyGetFromUrl("num")){
             
-            $safeGetNum = htmlspecialchars($_GET["num"]);
+            $safeGetNum = getGetFromUrl("num");
             
-            if (    filter_var($safeGetNum, FILTER_VALIDATE_INT) === 0 // num is a number
-                    || !filter_var($safeGetNum, FILTER_VALIDATE_INT) === false  ) {
-                
-                
+            if ( $safeGetNum < count(getPersonne(-1)) ) { // verif avec sql.
                 //$profilNums = getProfilNums($theNum); // requete sql
                 $profilNums = array($safeGetNum,0,1); // temporaire
 
@@ -78,17 +75,17 @@
         // avatar
         $monTexte .= '<article id="personneProfil">';
         $monTexte .= '<div class="wrapper">';
-        $monTexte .= '<div class="col-6-2">';
+        $monTexte .= '<div class="col-3-1">';
         $monTexte .= '<img src="'.$personne[12].'">';
         $monTexte .= '</div>';
         
         // description
-        $monTexte .= '<div class="col-6-2">';
+        $monTexte .= '<div class="col-3-1">';
         $monTexte .= '<p>'.$personne[11].'</p>';
         $monTexte .= '</div>';
         
         // liste de tags (Depeindre) //num, numPers, numProj
-        $monTexte .= '<div class="col-6-2">';
+        $monTexte .= '<div class="col-3-1">';
         $monTexte .= '<p class="tagList">';
         $findDepeindre = getDepeindre();
         $personneTagsList = array();
@@ -127,7 +124,7 @@
         // nom studio, site web, date de sortie
         $monTexte .= '<article class="projetProfil">';
         $monTexte .= '<div class="wrapper">';
-        $monTexte .= '<div class="col-6-2">';
+        $monTexte .= '<div class="col-3-1">';
         $monTexte .= '<p><span>Nom</span>'.$projet[2].'</p>';
         $monTexte .= '<p><span>Studio</span>'.$projet[3].'</p>';
         $monTexte .= '<p><span>Site web</span><a href="'.$projet[6].'">'.$projet[6].'</a></p>';
@@ -150,12 +147,12 @@
         $monTexte .= '</div>';
 
         // description
-        $monTexte .= '<div class="col-6-2">';
+        $monTexte .= '<div class="col-3-1">';
         $monTexte .= '<p>'.$projet[4].'</p>';
         $monTexte .= '</div>';
         
         // visuel
-        $monTexte .= '<div class="col-6-2">';
+        $monTexte .= '<div class="col-3-1">';
         $monTexte .= '<img src="'.$projet[7].'">';
         $monTexte .= '</div>';
         $monTexte .= '</div>';

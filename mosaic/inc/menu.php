@@ -46,7 +46,7 @@
 
 
 
-<menu class="col-6-2">
+<menu class="col-5-1">
       <?php fillMenu(); ?> 
 </menu>
 
@@ -84,7 +84,7 @@
         
         // raccourcir la liste à afficher :
         $offsetAffichage = 0;
-        $lengthAffichage = 5;
+        $lengthAffichage = 6;
         $shortTags = array_slice($tagsTries,$offsetAffichage,$lengthAffichage,true);
         
         
@@ -92,14 +92,14 @@
         /* Tags selectionnés */
         
         $tagSelectList = array();
-        $filtrerHtml = "<h1>Filtrer</h1>";
+        $filtrerHtml = "<h3>Filtrer</h3>";
         
-        if (!empty($_GET["tag"])) {
+        if (testNotEmptyGetFromUrl("tag")) {
             
             // s'il y en a on doit pouvoir tous les déselectionner d'un coup.
-            $filtrerHtml = "<a href='index.php'><h1>Défiltrer</h1></a>";
+            $filtrerHtml = "<a href='index.php'><h3>Défiltrer</h3></a>";
             
-            $safeGetTag = htmlspecialchars($_GET["tag"]); /****secure****/
+            $safeGetTag = getGetFromUrl("tag");
             $tagSelectList = (explode(",",$safeGetTag));
             // ce tableau servira aussi plus bas pour insérer une classe.
             

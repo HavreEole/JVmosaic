@@ -1,8 +1,9 @@
 <?php
-    include("inc/secure.php"); /* se connecter ? */
+
+    include("inc/bridge.php");
 
     include("inc/header.php");
-    echo($afficherHeader('Accueil'));
+    echo($afficherHeader('Annuaire mosaïque - Accueil'));
                
     echo("<main>");
 

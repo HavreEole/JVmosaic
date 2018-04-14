@@ -1,6 +1,6 @@
 <section id="menuListStyles">
     <?php include("inc/menu.php"); ?>
-    <article id="personnesListe" class="col-6-4"> 
+    <article id="personnesListe" class="col-5-4"> 
         <?php fillArticle(); ?>
     </article> 
 </section>
@@ -11,7 +11,7 @@
     /*** Contenu d'une card dans Article :
 
         <a href="profil.php?num=0">
-            <div class="col-4-1">
+            <div>
                 <img src="img/avatars/0.jpg"/>
                     <span>Jeanne</span>
             </div>
@@ -31,9 +31,9 @@
         
         /* Titre html */
         $myContent.= "<h1><span>";
-        if (!empty($_GET["tag"])) {
+        if (testNotEmptyGetFromUrl("tag")) {
 
-            $safeTag = htmlSpecialChars($_GET["tag"]); /****secure****/
+            $safeTag = getGetFromUrl("tag");
             $tagList = "";
             
             if (strpos($safeTag,",")>=0) { // s'il y a des virgules il y a plusieurs tags.
@@ -50,7 +50,7 @@
                     
             }
             
-            $myContent.= "Les résultats pour votre recherche".$tagList." sont";
+            $myContent.= "Les résultats pour votre recherche".$tagList;
 
         } else {
 
@@ -64,7 +64,7 @@
         
         // TODO 0. trier les profils affichés si clic sur un tag.
         // $cardSelection = array();
-        // if (!empty($_GET["tag"])) { /****secure****/
+        // if (testNotEmptyGetFromUrl("tag")) {
         // } else {} // penser à retirer les bannies.
 
         $cardSelection = array_rand($personne,8); // x personnes au hasard.
@@ -73,7 +73,7 @@
         /* Cards html */
         foreach ( $cardSelection as $oneCard ) {
             $myContent.= "<a href=\"profil.php?num=".$personne[$oneCard][0]."\">";
-            $myContent.= "<div class=\"col-4-1\">";
+            $myContent.= "<div>";
             $myContent.= "<img src=\"".$personne[$oneCard][12]."\">";
             $myContent.= "<span>";
             if ($personne[$oneCard][5] != "") { $myContent.= $personne[$oneCard][5]." "; }
