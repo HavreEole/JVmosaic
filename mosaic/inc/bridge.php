@@ -1,349 +1,432 @@
 <?php
 
+    // 1. Connexion et requêtes SQL
+    // 2. Récupérations GET (from url)
+    // 3. Récupérations POST (from inputs)
+    
 
-function testNotEmptyGetFromUrl ($aThing) { // vérifie uniquement que ce n'est pas vide.
-    
-    
-    if (isset($_GET[$aThing])) { // éviter des erreurs avec certains hébergeurs.
+
+    /* SQL */
+
+    function queryThis ($aThing, $aString='-1', $aVar='-1') { // Connexion et distribution des requêtes.
         
-        if (!empty($_GET[$aThing])) {
-            return true;
+        if (extension_loaded("PDO")) {
             
-        } else { // but empty return false if 0 :
-            
-            $safeGet = getGetFromUrl($aThing);
-            return ($safeGet == 0) ? true : false;
-        
+            try {
+                
+                $dsn = 'mysql:host=localhost;dbname=mosaic;port=3306;charset=utf8';
+                $pdo = new PDO($dsn, 'root', '');
+                
+                // https://stackoverflow.com/a/60496 :
+                $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false); // when using PDO to access a MySQL database real prepared statements are not used by default. To fix this you have to disable the emulation of prepared statements.
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); // the script will not stop with a Fatal Error when something goes wrong; it gives the developer the chance to catch any error(s) which are thrown as PDOExceptions.
+
+                
+                switch($aThing) {
+                        
+                    case "admins" :             return findAdmins($pdo); break;
+                    case "getPersonne" :        return getPersonne($pdo,$aString,$aVar); break;
+                    case "nombrePersonnes" :    return nombrePersonnes($pdo); break;
+                    case "personneProjetsNums" :return personneProjetsNums($pdo,$aString); break;
+                    case "getProjet" :          return getProjet($pdo,$aString,$aVar); break;
+                    case "getTags" :            return getTags($pdo,$aString,$aVar); break;
+                    case "getOneTag" :          return getOneTag($pdo,$aString); break;
+                    case "getDepeindre" :       return getDepeindre($pdo,$aString); break;
+                    case "getDecrire" :         return getDecrire($pdo,$aString); break;
+                    case "getProjectMembers" :  return getProjectMembers($pdo,$aString); break;
+                    case "compareTagName" :     return compareTagName($pdo,$aString); break;
+                    case "getPersonnesParTags" :return getPersonnesParTags($pdo,$aString,$aVar); break;
+                    default :                   return NULL; break;
+     
+                }
+                
+ 
+            } catch (exception $e) { // pour qu'il n'y ait pas un message d'erreur affichant le mdp en clair sur le site en cas de problème...
+                die('Erreur:'.$e->getMessage());
+                //die('Erreur: Accès refusé.');
+                
+                return NULL;
+            }
         }
-    
-    } else { return false; }
+        
+    }
 
-}
 
-function getGetFromUrl ($aThing) { // retourne un résultat secure.
     
-    $safeGetThing = htmlspecialchars($_GET[$aThing]);
-    // trim trim((string)$safeGetThing, '-')
-    
-    // +1
+    /* REFs :
+        fetch() -> retourne seulement la première ligne, sous forme d'array.
+        fetchAll() -> retourne toutes les lignes, chacune sous forme d'arrays dans un array.
+        fetchColumn() -> retourne juste une colonne. Ex: "SELECT COUNT('nom') FROM..." rendra juste un nombre.
+        
+        fetch...(PDO::FETCH_NUM) -> rendra un array avec index numérique.
+        fetch...(PDO::FETCH_ASSOC) -> rendra un array avec index associatif (key=>value).
+        -> Par défaut on obtient FETCH_BOTH qui renvoie chaque valeur dubliquée avec une clef numérique puis associative.
+        
+        fetch...(PDO::FETCH_COLUMN) -> rendra un array simple de la colonne (0=>'a',1=>'b',2=>'c'),
+            au lieu d'un array avec juste une valeur dans un array, ce qui est bof :
+            array( 0 => array( 0=>'a'), 1 => array( 0=>'b'), 2 => array( 0=>'c'),).
+            
+        Une requête complète :
+            $requete = $pdo->query('SELECT * FROM table');
+            $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+            $requete->closeCursor(); // fin de requête.
+            return $resultat;
 
-    if ($aThing == "num") {
+        Une requête préparée :
+            $monNumero = 2;
+            $requete = $pdo->prepare('SELECT * FROM table WHERE numero = :numero');
+            $requete->execute(array('numero' => $monNumero));
+            $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+            $requete->closeCursor(); return $resultat;
+    */
+    
+
+
+    function findAdmins($pdo) { // Footer : trouver tous les admins du site.
+
+        $requete = $pdo->query('SELECT numero,prenom,pseudo,nom FROM personne WHERE admin=1');
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function getPersonne($pdo,$aNum,$aMode) { // Récupérer une personne
         
-        // pour que FILTER_VALIDATE_INT fonctionne :
-        $safeGetThing = (int)$safeGetThing;
+        $theQuery = 'SELECT ';
         
-        // retourne false si not a number et 0; retire les + et espaces devant et les .xxx après.
-        $safeGetThing = filter_var($safeGetThing, FILTER_VALIDATE_INT);
+        switch ($aMode) {
+            case 'profil': $theQuery .= 'numero,ban,prenom,pseudo,nom,twitter,linkedin,website,description,urlAvatar'; break;
+            case 'list': $theQuery = 'numero,ban,prenom,pseudo,nom,urlAvatar'; break;
+            case 'connexion': $theQuery = 'numero,email,mdp,ban'; break;
+            default : $theQuery = 'numero'; break;
+        }
         
-        if ($safeGetThing < 0 ) { $safeGetThing *= -1; } // reste les négatifs à convertir.
-        if (!$safeGetThing) { $safeGetThing = 0; } // et si c'était un 0 ou un nan, false = 0.
+        $theQuery .= ' FROM personne WHERE numero = :numero';
         
-        /********TODO*********/// méthode ici pour vérif que l'index ne dépasse pas ?
+        $requete = $pdo->prepare($theQuery);
+        $requete->execute(array('numero' => $aNum));
+        $resultat = $requete->fetch(PDO::FETCH_ASSOC);
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function nombrePersonnes($pdo) { // compter le nombre total de personnes
         
-    } else {
+        $requete = $pdo->query('SELECT COUNT(ban) FROM personne WHERE ban = 0');
+        $resultat = $requete->fetchColumn();
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function personneProjetsNums($pdo,$aNum) { // récupérer les numeros de projets d'une personne
         
-        $safeGetThing = trim( $safeGetThing, $character_mask = " \t\n\r\0\x0B" );
-        // trim retournera "" si null.
+        $requete = $pdo->prepare('SELECT numero_PROJET FROM travailler WHERE numero_PERSONNE = :numero');
+        $requete->execute(array('numero' => $aNum));
+        $resultat = $requete->fetchAll(PDO::FETCH_COLUMN);
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function getProjet($pdo,$aNum,$mdp) { // récupérer un projet
         
-        // $safeGetThing = filter_input_array($safeGetThing, FILTER_SANITIZE_STRING);
-        // filter_input_array() expects parameter 1 to be long, string given in C:\wamp\www\mosaic\inc\bridge.php on line 48
+        $theQuery = 'SELECT nom,studio,description,dateSortie,website,urlVisuel FROM projet WHERE numero = :numero';
+        
+        if ($mdp != '-1') { $theQuery = 'SELECT numero,mdp FROM projet WHERE numero = :numero'; }
+        
+        $requete = $pdo->prepare($theQuery);
+        $requete->execute(array('numero' => $aNum));
+        $resultat = $requete->fetch(PDO::FETCH_ASSOC);
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function getTags($pdo,$affichageLength,$affichageOffset) { // Récupérer une liste de tags, triés par nb d'affichages.
+
+        
+        $requete = $pdo->prepare('SELECT nom,nbUsages FROM tags ORDER BY nbUsages DESC LIMIT :affichageLength');
+        $requete->execute(array('affichageLength' => $affichageLength));
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        $requete->closeCursor();
+        
+        foreach ($resultat as &$oneResultat) { // Faire correspondre le nom à l'url :
+
+            $nomTagPourUrl = strtolower($oneResultat['nom']); // pas de majs
+            $nomTagPourUrl = preg_replace('/[ ]/', '-', $nomTagPourUrl); // les espaces sont des -.
+            // ! on autorisera que a-zA-Z0-9 et - dans la création de tags.
+            
+            $oneResultat['nomPourUrl'] = $nomTagPourUrl;
+            
+            /* /!\ On ne peut faire un array_push sur une valeur ($oneResultat) du tableau ($resultat) passé en foreach que grace au & -> &$oneResultat. https://stackoverflow.com/questions/9920619/changing-value-inside-foreach-loop-doesnt-change-value-in-the-array-being-itera#9920684 "In order to be able to directly modify array elements within the loop precede $value with &. In that case the value will be assigned by reference." */ // Elle m'aura bien fait patiner celle là... -_-
+        }
+        
+        // calculer et trier le nombre d'utilisations des tags en temps réel ?
+        // Juste usages par personnes : SELECT t.nom,count(d.numero_TAGS) ct FROM `tags` t inner join depeindre d on t.numero = d.numero_TAGS group by t.nom ORDER BY `ct` DESC
+        // Ou usages par personnes ET projets : // SELECT DISTINCT nom,count(d.numero_TAGS) ct from tags t INNER JOIN ( SELECT numero_PERSONNE,numero_TAGS FROM depeindre UNION SELECT numero_PERSONNE,numero_TAGS FROM decrire d2 INNER JOIN travailler tr ON d2.numero_PROJET = tr.numero_PROJET ) as d ON d.numero_TAGS = t.numero group by t.nom ORDER BY ct DESC;
+        
+        return $resultat;
+        
+    }
+
+
+    function getOneTag($pdo,$anUrlName) { // Récupérer un tag
+        
+        //faire correspondre l'url au tag
+        $aName = preg_replace('/[-]/', ' ', $anUrlName); // des espaces
+        $aName = ucwords($aName); // maj devant chaque mot
+        
+        /* Ref si on veut reverse */
+        //$nomTagPourUrl = strtolower($resultat['nom']); // pas de majs
+        //$nomTagPourUrl = preg_replace('/[ ]/', '-', $nomTagPourUrl); // les espaces sont des -.
+        
+        $requete = $pdo->prepare('SELECT nom,nbUsages FROM tags WHERE nom = :nom');
+        $requete->execute(array('nom' => $aName));
+        $resultat = $requete->fetch(PDO::FETCH_ASSOC);
+        $requete->closeCursor();
+        
+        $resultat['nomPourUrl'] = $anUrlName;
+        
+        return $resultat;
+        
+    }
+
+
+    function getDepeindre($pdo,$aNum) { // récupérer les tags qui depeignent une personne.
+
+        $requete = $pdo->prepare('  SELECT nom FROM tags t
+                                    INNER JOIN depeindre d ON t.numero = d.numero_TAGS
+                                    WHERE d.numero_PERSONNE = :numero');
+        $requete->execute(array('numero' => $aNum));
+        $resultat = $requete->fetchAll(PDO::FETCH_COLUMN);
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function getDecrire($pdo,$aNum) { // récupérer les tags qui décrivent un projet
+        
+        $requete = $pdo->prepare('  SELECT nom FROM tags t
+                                    INNER JOIN decrire d ON t.numero = d.numero_TAGS
+                                    WHERE d.numero_PROJET = :numero');
+        $requete->execute(array('numero' => $aNum));
+        $resultat = $requete->fetchAll(PDO::FETCH_COLUMN);
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function getProjectMembers($pdo,$aNum) { // liste des gens qui travaillent sur le même projet
+        
+        $requete = $pdo->prepare('  SELECT p.numero,nom,prenom,pseudo FROM personne p
+                                    INNER JOIN travailler t ON p.numero = t.numero_PERSONNE
+                                    WHERE t.numero_PROJET = :numero');
+        $requete->execute(array('numero' => $aNum));
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        $requete->closeCursor(); return $resultat;
+    }
+
+
+    function compareTagName($pdo,$anUrlName) { // Comparer les tags de l'url aux tags de la db.
+            
+        //faire correspondre l'url au tag
+        $aName = preg_replace('/[-]/', ' ', $anUrlName); // des espaces
+        $aName = ucwords($aName); // maj devant chaque mot
+
+        $requete = $pdo->prepare('SELECT nom FROM tags WHERE nom = :nom');
+        $requete->execute(array('nom' => $aName));
+        $resultat = $requete->fetchColumn();
+        $requete->closeCursor();
+
+        if (!$resultat) { $anUrlName = ''; }
+
+       return $anUrlName;
+            
+    }
+
+
+    function getPersonnesParTags($pdo,$anArray,$affichageLength) { // -> liste des personnes par tags.
+        
+        $resultatBrut = array();
+        $resultat = array();
+        
+        
+        foreach ($anArray as $oneTagName) { // liste des personnes pour chaque tag
+            
+            //faire correspondre l'url au tag
+            $oneTagName = preg_replace('/[-]/', ' ', $oneTagName); // des espaces
+            $oneTagName = ucwords($oneTagName); // maj devant chaque mot
+            
+            // Personnes ayant le tag dans leur profil mais pas dans leurs projets :
+            /*$requete = $pdo->prepare('  SELECT numero_PERSONNE FROM depeindre d
+                                        INNER JOIN tags t on d.numero_TAGS = t.numero
+                                        WHERE t.nom = :nom
+                                        LIMIT :affichageLength');*/
+
+            // Personnes ayant le tag soit dans leur profil soit dans leurs projets :
+            $requete = $pdo->prepare('  SELECT DISTINCT numero_PERSONNE FROM
+                                            (   SELECT numero_PERSONNE,numero_TAGS FROM depeindre
+                                                UNION
+                                                SELECT numero_PERSONNE,numero_TAGS FROM decrire d2
+                                                    INNER JOIN travailler tr ON d2.numero_PROJET = tr.numero_PROJET
+                                            ) as d
+                                        INNER JOIN tags t ON d.numero_TAGS = t.numero
+                                        WHERE t.nom = :nom
+                                        LIMIT :affichageLength');
+            $requete->execute(array('nom' => $oneTagName, 'affichageLength' => $affichageLength+1));
+            $resultat = $requete->fetchAll(PDO::FETCH_COLUMN);
+            $requete->closeCursor();
+
+            array_push($resultatBrut,$resultat);
+        }
+        
+        
+        if (count($resultatBrut)>1) { // si plusieurs tags, on fait l'intersection :
+            
+            $intersectionResultats = array();
+            
+            for ($i=0; $i<count($resultatBrut)-1; $i++) {
+                if ($i == 0) { $intersectionResultats = $resultatBrut[$i]; }
+                $intersectionResultats = array_intersect($intersectionResultats,$resultatBrut[$i+1]);
+            }
+            
+            $resultat = $intersectionResultats;
+            
+            
+        } else { // sinon on renvoie juste la liste :
+
+            $resultat = $resultatBrut[0];
+        }
+
+        
+        return $resultat;
         
     }
     
-    //var_dump($safeGetThing);
-    return $safeGetThing;
+    // TODO
+    // longueur max : limiter le nombre de résultats retournés sur les grosses requetes.
+    // embêtant de devoir recharger toute la page. Ajax ?
+    // personnes bannies ?
     
 
+
+
+
+    /* RECUPERATIONS */
+
+
+    /* vérifie uniquement que ce n'est pas vide. */
+    function testNotEmptyGetFromUrl ($aThing) {
+
+        if (isset($_GET[$aThing])) { // éviter des erreurs avec certains hébergeurs.
+
+            if (!empty($_GET[$aThing])) {
+                return true;
+
+            } else { // but empty return false if 0 :
+                return ($_GET[$aThing] == 0) ? true : false;
+                
+            }
+
+        } else { return false; }
+
+    }
+
+
+    /* (URL) retourne un résultat secure depuis les GET. */
+    function getGetFromUrl ($aThing) {
+
+        $safeGetThing = $_GET[$aThing];
+
+        if ($aThing == "num") {
+
+            $safeGetThing = preg_replace('/[^0-9]/', '', $safeGetThing); // retire tout non-digit
+            $safeGetThing = preg_replace('/\A[0+]/', '', $safeGetThing); // puis retire les 0 au début
+            if ( $safeGetThing == "" ) { $safeGetThing = "0"; } // s'il ne reste rien on en fait un 0.
+
+            // vérifier que l'index ne dépasse pas.
+            if ( $safeGetThing >= queryThis("nombrePersonnes") ) { $safeGetThing = "0"; }
+
+        } else if ($aThing == "tag") {
+
+            // Any single character except : the range a-z or A-Z or 0-9 or ,
+            $safeGetThing = preg_replace('/[^a-zA-Z0-9,-]/', '', $safeGetThing);
+
+        }
+
+        return $safeGetThing;
+
+    }
+
+
+    /* (INPUT) retourne un résultat secure depuis les POST. */
+    function getPostFromInput () {
+        
+        // -> htmlspecialchars pour qqchose qui va être affiché en html
+        // -> + sanitization lib, mais en attendant je vais juste retirer les trucs louches.
+        // <>~%'{([-|_\^)]=}+$*!:;.?é`çà@$£/§#& ,
+        
+        /* ... */
+        
+        /*
+            htmlspecialchars($_GET[$aThing], ENT_QUOTES);
+            htmlentities($safeGetThing);
+            strip_tags($safeGetThing);
+            filter_var($safeGetThing, FILTER_SANITIZE_ENCODED);
+            https://secure.php.net/manual/en/function.urlencode.php <- pas sur get !!
+        */
+        
+        // MDP
+        // mdp faire un hashtag et ne jamais le décoder.
+        // comparer avec la tentative de mdp hashée de l'user quand il veut se connecter.
+        // sha1($password) pour crypter le mdp dans la base
+        // https://secure.php.net/manual/fr/faq.passwords.php#faq.passwords.fasthash
+        // voir wikipedia plutôt pour l'explication du salt.
+        
+        // TAGS (création)
+        // ! on autorisera QUE les alphas, digits et espaces. Pas d'espaces multiples, pas de "".
+        
+        // Twitter -> placer un @ devant; verif les caractères permis dans les @ twitter.
+        // linkedin -> placer l'url normale devant; autoriser les - pour linkedin.
+        // website : autoriser / _ - . et ?
+        
+        // messages d'avertissement :
+        // ne pas entrer son mail ou tel
+        // reflechir avant d'indiquer sa ville dans les tags
+        // message habituel mdp fort
+        
+        // captchas : pour l'instant juste mettre un mot de passe fort, en dur.
     
-}
+    }
 
 
 
+
+/* About sql injections, xss.. : http://kunststube.net/escapism/ */
+
+// URL TAGS
+// filter_sanitize_encoded pour les url, -> pour comparer les tags de la bdd avec ceux de l'url ?
+// js : window.location.href = '?tag=' + encodeURIComponent(title); Replace ampersands with &amp; blank space is equivalent to “%20” : with %3A / with %2F https://perishablepress.com/url-character-codes/
+
+// SQL
+// the mysql_ prefix / DB-handler is outdated, deprecated and should not be used at all. The safest way is to use either mysqli_ or PDO, and use prepared statements.
+// -> https://stackoverflow.com/questions/60174/how-can-i-prevent-sql-injection-in-php?rq=1
+// http://www.bitrepository.com/sanitize-data-to-prevent-sql-injection-attacks.html
+// notamment mais pas que, dans $query = sprintf("SELECT * FROM `members` WHERE username='%s' AND password='%s'", $username, $password); The %s from the sprintf() function indicates that the argument is treated as and presented as a string.
+
+    /* $requete = $pdo->prepare('SELECT nom FROM personne WHERE numero = :numero');
+       $requete->execute(array('numero' => $numero))
+                 or die(print_r($requete->errorInfo()));
+                 // récupérer une erreur, pas trop l'impression que ça marche. :?*/
+
+// REFS
+// https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29
 // http://wisercoder.com/check-for-integer-in-php/
 
-// Pass a random generated string ( hashed ) as a hidden element in your form each time your form is rendered, save the string on generation in you're session and on form sumbit check for that first, if they don't match then you don't eaven need to bother checking the id or other elements sent
+// FILTERS
+// https://secure.php.net/manual/en/book.filter.php
+// https://www.w3schools.com/php/php_filter.asp
+// Remember to trim() the $_POST before your filters are applied
+// To include multiple flags, simply separate the flags with vertical pipe symbols.
 
-/*    
-
-    // TAGS pour List :
-    $safeGetTag = array(); // TODO session ?
-    if (!empty($_GET["tag"])) {
-        
-        // TODO 1. sécuriser ce qui vient de Get.
-        $safeGetTag = htmlspecialchars($_GET["tag"]);
-        
-    }
-    
-    
-    // NUM personne pour profil :
-    // num !empty
-    // num is a number
-    $safeGetNum = htmlspecialchars($_GET["num"]);
-    $profilNums = getProfilNums($theNum);
-    
-*/
-
-/*
-
-https://secure.php.net/manual/en/book.filter.php
-https://secure.php.net/manual/en/function.filter-input.php
-https://secure.php.net/manual/fr/filter.filters.sanitize.php
-https://secure.php.net/manual/en/filter.filters.validate.php
-Remember to trim() the $_POST before your filters are applied
-https://www.w3schools.com/php/php_filter.asp
-
-To include multiple flags, simply separate the flags with vertical pipe symbols.
-For example, if you want to use filter_var() to sanitize $string with FILTER_SANITIZE_STRING and pass in FILTER_FLAG_STRIP_HIGH and FILTER_FLAG_STRIP_LOW, just call it like this:
-$string = filter_var($string, FILTER_SANITIZE_STRING, FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_LOW);
-
-https://secure.php.net/manual/en/function.urlencode.php <- pas sur get !!
-js : window.location.href = 'display_album.php?album=' + encodeURIComponent(title);
-Replace ampersands with &amp; blank space is equivalent to “%20” : with %3A / with %2F https://perishablepress.com/url-character-codes/
-
-TODO 2. url-iser les noms.
-on est obligés de faire correspondre le nom à l'url..
-$nomTagPourUrl = $oneTagInfos[1]; /*****************
-
-requetes sql http://www.bitrepository.com/sanitize-data-to-prevent-sql-injection-attacks.html
-notamment mais pas que : 
-$query = sprintf("SELECT * FROM `members` WHERE username='%s' AND password='%s'", $username, $password);
-The %s from the sprintf() function indicates that the argument is treated as and presented as a string.
-
-https://secure.php.net/manual/en/function.htmlentities.php htmlspecialchars mais pour garder les elements d'urls. -> pour linkedin etc ?
-
-captchas : https://www.w3.org/TR/turingtest/
-
-*/
-
-    /* Qui et quels projets */
-    function getProfilNums($theNum) {
-        
-        // num personne, num projets...
-        $profilNums = array();
-
-        array_push($profilNums,$safeGetNum);
-        
-        // Travailler -> liste des projets
-        
-        // for
-        // array_push les n° de projets
-        
-        return $profilNums;
-    }
-
-
-    /* infos */
-
-    function getPersonne($aNum) {
-
-        $personne = array(
-            
-             // num mail mdp admin ban prénom pseudo nom twitter linkedin site desc avatar
-            array(0,"cami@vanille.com","vanille",0,0,"Camille","","Vanille","@vanille","","vanille.com","Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. ","img/avatars/0.jpg"),
-            array(1,"pinpin@lapin.com","lapin",0,0,"Juan","Pippin","Fisher","@pippin","pippin","pippin.com","Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.","img/avatars/1.jpg"),
-            array(2,"dotydot@dot.com","dot",0,0,"Blue","","dotstar","@blue","blue","blue.com","Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?","img/avatars/2.jpg"),
-            array(3,"grrr@grrr.com","grrr",0,0,"Teddy","","Furbear","@teddy","teddy","teddy.com","But I must explain to you how all this mistaken idea of denouncing pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of the great explorer of the truth, the master-builder of human happiness.","img/avatars/3.jpg"),
-            array(4,"picpicpic@ture.com","ture",0,0,"Dan","Pic","Greatcam","@picpicpic","","picpicpic.com","No one rejects, dislikes, or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure rationally encounter consequences that are extremely painful. Nor again is there anyone who loves or pursues or desires to obtain pain of itself, because it is pain, but because occasionally circumstances occur in which toil and pain can procure him some great pleasure.","img/avatars/4.jpg"),
-            array(5,"flyfly@flyfly.com","fly",0,0,"Marty","","Fly","@fly","","fly.com","To take a trivial example, which of us ever undertakes laborious physical exercise, except to obtain some advantage from it?","img/avatars/5.jpg"),
-            array(6,"potpotpot@pot.com","pot",0,0,"Potter","","Coolbus","@potpotpot","","potpotpot.com","But who has any right to find fault with a man who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure?","img/avatars/6.jpg"),
-            array(7,"lalala@la.com","la",0,0,"","","Lace","@lalala","lalala","","At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.","img/avatars/7.jpg"),
-            array(8,"gregar@gargre.com","garden",0,0,"Green","Pretty","Garden","","","","blablabla","img/avatars/8.jpg"),
-            array(9,"lili@cena.com","cena",0,0,"Light","","Cena","@cena","","","blablabla","img/avatars/9.jpg"),
-            array(10,"grass@grass.com","grass",0,0,"","Wide","Outdoor","@outdoor","","","blablabla","img/avatars/10.jpg"),
-            array(11,"miam@miam.com","miam",0,0,"Adorable","Cute","Party","","adorable","adorable.com","blablabla","img/avatars/11.jpg"),
-            array(12,"o@cean.com","cean",0,0,"Karin","","Ocean","","ocean","ocean.com","blablabla","img/avatars/12.jpg"),
-            array(13,"chap@pie.com","pie",0,0,"Chappie","Mountain","Hat","@chappie","","","blablabla","img/avatars/13.jpg"),
-            array(14,"__@__.com","blanche",0,0,"Blanche","White","Glasses","","","blanche.com","blablabla","img/avatars/14.jpg"),
-            array(15,"pink@brun.com","pink",0,0,"Rose","","Brown","","pink","","blablabla","img/avatars/15.jpg"),
-            array(16,"point@glasses.com","dot",0,0,"Dot","","Curly","","","","blablabla","img/avatars/16.jpg"),
-            array(17,"denise@masque.com","mask",0,0,"Venicia","","Mask","@venicia","venicia","venicia.com","blablabla","img/avatars/17.jpg"),
-            array(18,"large@town.com","big",0,0,"Secret","Big","City","@bigcity","","","blablabla","img/avatars/18.jpg"),
-            array(19,"jiji@ne.com","jean",0,0,"Jean","Jeanne","Graph","","","","blablabla","img/avatars/19.jpg"),
-            array(20,"lili@dev.com","dev",0,0,"","Little","Dev","","","","blablabla","img/avatars/20.jpg"),
-            array(21,"sourire@sourire.com","beard",0,0,"Smile","","Whitebeard","@smile","","smile.com","blablabla","img/avatars/21.jpg"),
-            array(22,"plage@plage.com","wave",0,0,"Wave","","Surfer","@wave","","","blablabla","img/avatars/22.jpg"),
-            array(23,"ponponpon@pont.com","pont",0,0,"Bridge","Ocean","Mister","","mister","","blablabla","img/avatars/23.jpg"),
-            array(24,"ella@ella.com","ella",0,0,"Two","","Ombrella","@ombrella","","ombrella.com","blablabla","img/avatars/24.jpg"),
-            array(25,"yumyum@coffee.com","yum",0,0,"Chill","","Coffee","","","","blablabla","img/avatars/25.jpg"),
-            array(26,"will@sky.com","will",0,0,"Will","Sky","Blondy","","","will.com","blablabla","img/avatars/26.jpg"),
-            array(27,"ray@ure.com","ray","Ray",0,0,"Stripes","Yellow","@ray","","ray.com","blablabla","img/avatars/27.jpg"),
-            array(28,"autumn@autumn.com","feuille",0,0,"Leaf","Walking","Forest","@leaf","","leaf.com","blablabla","img/avatars/28.jpg"),
-            array(29,"sand@sand.com","sable",0,0,"Sand","","Marine","","","","blablabla","img/avatars/29.jpg"),
-            array(30,"lili@manager.com","mana",0,0,"Lila","","Manager","","","","blablabla","img/avatars/30.jpg")
-        );
-        
-        $personneRequest;
-        
-        if ($aNum >= 0) {
-            return $personne[$aNum];
-            
-        } else {
-            return $personne;
-        }
-        
-    }
-
-
-    function getTag($aNum) {
-
-        $tag = array( // num, nom, nbUsages
-                array(0,"Freelance",12),
-                array(1,"Journalisme",15),
-                array(2,"Developpement",10),
-                array(3,"CommunityManagement",6),
-                array(4,"Unity",4),
-                array(5,"Management",7),
-                array(6,"Graphisme",3),
-                array(7,"GameDesign",1),
-                array(8,"2D",0),
-                array(9,"LevelDesign",4),
-                array(10,"3D",7),
-                array(11,"GameJam",9),
-                array(12,"Lead",2),
-                array(13,"Indie",4),
-                array(14,"NeedJob",7),
-                array(15,"Illustration",0),
-                array(16,"ConceptArt",9),
-                array(17,"Chroniques",5),
-                array(18,"Youtube",4),
-                array(19,"Streaming",1),
-                array(20,"Recherche",8),
-                array(21,"Enseignement",6),
-                array(22,"Musique",1),
-                array(23,"Composing",0),
-                array(24,"SoundDesign",3),
-                array(25,"Animation",4),
-                array(26,"Expat",2),
-                array(27,"ToolDev",2),
-                array(28,"Politique",4),
-                array(29,"NarrativeDesign",4),
-                array(30,"Web",8),
-            );
-        
-        if ($aNum >= 0) {
-            return $tag[$aNum];
-            
-        } else {
-            return $tag;
-        }
-
-    }
-
-
-    function getDepeindre() {
-        
-        $depeindre = array( //num, numPers, numTag
-            array(0,0,6),
-            array(1,3,6),
-            array(2,2,1),
-            array(3,3,1),
-            array(4,7,15),
-            array(5,1,12),
-            array(6,2,4),
-            array(7,3,14),
-            array(8,4,1),
-            array(9,5,7),
-            array(10,6,2),
-            array(11,7,3),
-            array(12,8,4),
-            array(13,9,5),
-            array(14,10,8),
-            array(15,0,9),
-            array(16,1,10),
-            array(17,2,11),
-            array(18,3,12),
-            array(19,4,13),
-            array(20,5,14),
-        );
-
-        return $depeindre;
-    }
-
-
-    function getDecrire() {
-        
-        $decrire = array( //num, numProj, numTag
-            array(0,9,2),
-            array(1,8,4),
-            array(2,7,6),
-            array(3,6,8),
-            array(4,5,10),
-            array(5,4,12),
-            array(6,3,14),
-            array(7,2,16),
-            array(8,1,18),
-            array(9,0,20),
-            array(10,9,22),
-            array(11,8,24),
-            array(12,7,26),
-            array(13,6,28),
-            array(14,5,30),
-            array(15,4,1),
-            array(16,3,3),
-            array(17,2,5),
-            array(18,1,7),
-            array(19,0,9),
-            array(20,9,11),
-        );
-
-        return $decrire;
-    }
-
-  
-    function getTravailler() {
-        
-        $travailler = array( //num, numPers, numProj
-            array(0,9,0),
-            array(1,8,2),
-            array(2,7,4),
-            array(3,6,6),
-            array(4,5,8),
-            array(5,4,0),
-            array(6,3,2),
-            array(7,2,4),
-            array(8,1,6),
-            array(9,0,8),
-            array(10,9,1),
-            array(11,8,3),
-            array(12,7,5),
-            array(13,6,7),
-            array(14,5,9),
-            array(15,4,1),
-            array(16,3,3),
-            array(17,2,5),
-            array(18,1,7),
-            array(19,0,9),
-            array(20,9,0),
-        );
-
-        return $travailler;
-    }
-
-
-    function getProjet($aNum) {
-        
-        $projet = array( //num, mdp, nom, studio, desc, date, site, visuel.
-            array(0,"sjfpelsifn","LOL","Studio Lol","Un jeu où on rigole énormément.","01/01/01","lololol.com","img/visuels/0.jpg"),
-            array(1,"dfgfgdfggg","Libraire","Raplapla","Vous travaillez dans une bibliothèque.","01/01/01","pouet.com","img/visuels/1.jpg"),
-            array(2,"eqzeqzezee","Lapins Attaque","5 Jours","C'est peut-être un piège avec des bruits bizarres...","01/01/01","nini.com","img/visuels/2.jpg"),
-            array(3,"poihjjfgff","Bêtes Apparat","Boulanger","C'est pas gagné mais c'est sympa d'essayer !","01/01/01","gagaga.com","img/visuels/3.jpg"),
-            array(4,"bnrqseezrr","Nombres on fire","Pierre","Attention, il ne faut pas partir en mission en solitaire.","01/01/01","toto.com","img/visuels/4.jpg"),
-            array(5,"yuityrdfff","Hôtel Castor","Heures","Comme c'est joli il y a des rondins et c'est gentil !","01/01/01","tutu.com","img/visuels/5.jpg"),
-            array(6,"azeedxdfgg","Salopette Nocturne","Vampire","La spéléologie pour les chauve-souris.","01/01/01","yop.com","img/visuels/6.jpg"),
-            array(7,"dfghjjghyy","Lumière Bonsoir","Repos","C'est très tranquille.","01/01/01","hiphip.com","img/visuels/7.jpg"),
-            array(8,"zezeddvfgg","Poisson ici famille","L'Equipe","Un jeu avec des familles de poissons. Des fois ils ont des points communs, mais faut pas le dire.","01/01/01","plop.com","img/visuels/8.jpg"),
-            array(9,"mlmouigfgg","Patience","Reflexion","Ca s'appelle Patience mais en fait c'est vachement rapide, c'est un concept.","01/01/01","krr.com","img/visuels/9.jpg"),
-        );
-        
-        if ($aNum >= 0) {
-            return $projet[$aNum];
-            
-        } else {
-            return $projet;
-        }
-        
-    }
-
+// CAPTCHAS : https://www.w3.org/TR/turingtest/
+// ASTUCE ? Pass a random generated string ( hashed ) as a hidden element in your form each time your form is rendered, save the string on generation in your session and on form sumbit check for that first, if they don't match then you don't eaven need to bother checking the id or other elements sent
 
 
 ?>

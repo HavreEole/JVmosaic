@@ -19,21 +19,17 @@
             
             $safeGetNum = getGetFromUrl("num");
             
-            if ( $safeGetNum < count(getPersonne(-1)) ) { // verif avec sql.
-                //$profilNums = getProfilNums($theNum); // requete sql
-                $profilNums = array($safeGetNum,0,1); // temporaire
+            $profilNums = queryThis("personneProjetsNums",$safeGetNum);
 
-                echo fillPersonne($profilNums[0]);
+            echo fillPersonne($safeGetNum);
 
-                if ( count($profilNums) > 1 ) {
-
-                    for ($i=1; $i<count($profilNums); $i++) {
-                        echo fillProjet($profilNums[$i]);
-                    }
-
+            if ( count($profilNums) > 0 ) {
+                foreach ($profilNums as $oneProject) {
+                    
+                    echo fillProjet($oneProject,$safeGetNum);
+                    
                 }
-                
-            } else { $anErrorOccured = true; }
+            }
             
         } else { $anErrorOccured = true; }
 
@@ -64,46 +60,41 @@
     /* Remplir Profil */
     function fillPersonne($numPersonne) {
         
-        $personne = getPersonne($numPersonne);
+        $personne = queryThis("getPersonne",$numPersonne,'profil');
         $monTexte = '';
 
         // num mail mdp admin ban prénom pseudo nom twitter linkedin site desc avatar
         
         // Nom, prénom, pseudo <- titre
-        $monTexte .= '<h1><span>'.$personne[5].' '.$personne[6].' '.$personne[7].'</span></h1>';
+        $monTexte .= '<h1><span>'.$personne["prenom"].' '.$personne["pseudo"].' '.$personne["nom"].'</span></h1>';
         
         // avatar
         $monTexte .= '<article id="personneProfil">';
         $monTexte .= '<div class="wrapper">';
         $monTexte .= '<div class="col-3-1">';
-        $monTexte .= '<img src="'.$personne[12].'">';
+        $monTexte .= '<img src="'.$personne['urlAvatar'].'">';
         $monTexte .= '</div>';
         
         // description
         $monTexte .= '<div class="col-3-1">';
-        $monTexte .= '<p>'.$personne[11].'</p>';
+        $monTexte .= '<p>'.$personne['description'].'</p>';
         $monTexte .= '</div>';
         
-        // liste de tags (Depeindre) //num, numPers, numProj
+        // liste de tags (depeindre)
         $monTexte .= '<div class="col-3-1">';
         $monTexte .= '<p class="tagList">';
-        $findDepeindre = getDepeindre();
-        $personneTagsList = array();
-        foreach($findDepeindre as $aDepiction) {
-            if ($aDepiction[1] == $numPersonne) {
-                array_push($personneTagsList,$aDepiction[2]);
-            }
+        
+        $personneTagsList = queryThis("getDepeindre",$numPersonne);
+        foreach($personneTagsList as $aPersonneTagName) {
+            $monTexte .= '<span>'.$aPersonneTagName.'</span>';
         }
-        foreach($personneTagsList as $aPersonneTag) {
-            $infosPersonneTag = getTag($aPersonneTag); // num, nom, nbUsages
-            $monTexte .= '<span>'.$infosPersonneTag[1].'</span>';
-        }
+        
         $monTexte .= '</p>';
         
         // twitter, linkedin, site web
-        $monTexte .= '<p><span>Twitter</span><a href="https://twitter.com/'.$personne[8].'">'.$personne[8].'</a></p>';
-        $monTexte .= '<p><span>Linkedin</span><a href="https://www.linkedin.com/in//'.$personne[9].'">'.$personne[9].'</a></p>';
-        $monTexte .= '<p><span>Site web</span><a href="'.$personne[10].'">'.$personne[10].'</a></p>';
+        $monTexte .= '<p><span>Twitter</span><a href="https://twitter.com/'.$personne['twitter'].'">'.$personne['twitter'].'</a></p>';
+        $monTexte .= '<p><span>Linkedin</span><a href="https://www.linkedin.com/in//'.$personne['linkedin'].'">'.$personne['linkedin'].'</a></p>';
+        $monTexte .= '<p><span>Site web</span><a href="'.$personne['website'].'">'.$personne['website'].'</a></p>';
         $monTexte .= '</div>';
         $monTexte .= '</div>';
         $monTexte .= '</article>';
@@ -113,47 +104,74 @@
     }
 
     /* Remplir Projet */
-    function fillProjet($numProjet) {
+    function fillProjet($numProjet,$numPersonne) {
         
-        $projet = getProjet($numProjet);
+        $projet = queryThis("getProjet",$numProjet);
+        //num, mdp, nom, studio, desc, date, site, visuel.
         
         $monTexte = '';
-        
-        //num, mdp, nom, studio, desc, date, site, visuel.
         
         // nom studio, site web, date de sortie
         $monTexte .= '<article class="projetProfil">';
         $monTexte .= '<div class="wrapper">';
         $monTexte .= '<div class="col-3-1">';
-        $monTexte .= '<p><span>Nom</span>'.$projet[2].'</p>';
-        $monTexte .= '<p><span>Studio</span>'.$projet[3].'</p>';
-        $monTexte .= '<p><span>Site web</span><a href="'.$projet[6].'">'.$projet[6].'</a></p>';
-        $monTexte .= '<p><span>Date de sortie</span>'.$projet[5].'</p>';
+        $monTexte .= '<p><span>Nom</span>'.$projet['nom'].'</p>';
+        $monTexte .= '<p><span>Studio</span>'.$projet['studio'].'</p>';
+        $monTexte .= '<p><span>Site web</span><a href="'.$projet['website'].'">'.$projet['website'].'</a></p>';
+        $monTexte .= '<p><span>Date de sortie</span>'.$projet['dateSortie'].'</p>';
         
-        // liste de tags (Decrire) //num, numProj, numTag
-        $monTexte .= '<p class="tagList">';
-        $findDecrire = getDecrire();
-        $projetTagsList = array();
-        foreach($findDecrire as $aDescription) {
-            if ($aDescription[1] == $numProjet) {
-                array_push($projetTagsList,$aDescription[2]);
+        
+        // liste de membres sur le projet (Travailler)
+        
+        $projetMembers = queryThis("getProjectMembers",$numProjet);
+
+        if ( count($projetMembers)>1 ) {
+            
+            $monTexte .= '<p><span>Equipe</span>';
+            $otherMembersTxt = '';
+            
+            foreach($projetMembers as $aProjetMember) {
+
+                $patronyme = ( $aProjetMember['pseudo'] != "" ? $aProjetMember['pseudo'] :
+                               $aProjetMember['prenom']." ".$aProjetMember['nom'] );
+                
+                if ( $numPersonne == $aProjetMember['numero'] ) {
+
+                    $monTexte .= $patronyme.', ';
+                    
+                } else {
+
+                    $otherMembersTxt .= '<a href="profil.php?num='.$aProjetMember['numero'].'">'.$patronyme.'</a>, ';
+                }
             }
+            
+            $otherMembersTxt = rtrim($otherMembersTxt,', ');
+            $monTexte .= $otherMembersTxt.'.';
+            $monTexte .= '</p>';
         }
-        foreach($projetTagsList as $aProjetTag) {
-            $infosProjetTag = getTag($aProjetTag); // num, nom, nbUsages
-            $monTexte .= '<span>'.$infosProjetTag[1].'</span>';
+        
+        
+        // liste de tags (Decrire)
+        $monTexte .= '<p class="tagList">';
+        
+        $projetTagsList = queryThis("getDecrire",$numProjet);
+        foreach($projetTagsList as $aProjetTagName) {
+            $monTexte .= '<span>'.$aProjetTagName.'</span>';
         }
+        
         $monTexte .= '</p>';
         $monTexte .= '</div>';
 
+        
         // description
         $monTexte .= '<div class="col-3-1">';
-        $monTexte .= '<p>'.$projet[4].'</p>';
+        $monTexte .= '<p>'.$projet['description'].'</p>';
         $monTexte .= '</div>';
+        
         
         // visuel
         $monTexte .= '<div class="col-3-1">';
-        $monTexte .= '<img src="'.$projet[7].'">';
+        $monTexte .= '<img src="'.$projet['urlVisuel'].'">';
         $monTexte .= '</div>';
         $monTexte .= '</div>';
         $monTexte .= '</article>';

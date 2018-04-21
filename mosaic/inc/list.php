@@ -8,86 +8,109 @@
 
 <?php
 
-    /*** Contenu d'une card dans Article :
-
-        <a href="profil.php?num=0">
-            <div>
-                <img src="img/avatars/0.jpg"/>
-                    <span>Jeanne</span>
-            </div>
-        </a>
-        <p><a href="">Voir plus...</a></p> // TODO
-        
-    ***/
-
-
     /* Remplir Article */
     function fillArticle() {
-        
-        $personne = getPersonne(-1);
 
         $myContent = "";
-
+        $tagList = ""; // liste des tags s'il y a une recherche en cours.
+        $tagListArray = array(); // liste des tags s'il y a une recherche en cours.
+        $cardSelection = array(); // les numeros de profils qu'on va afficher.
+        $affichageLength = 8;
+        $voirPlus = false;
+        
         
         /* Titre html */
-        $myContent.= "<h1><span>";
-        if (testNotEmptyGetFromUrl("tag")) {
 
-            $safeTag = getGetFromUrl("tag");
-            $tagList = "";
-            
-            if (strpos($safeTag,",")>=0) { // s'il y a des virgules il y a plusieurs tags.
+        if (testNotEmptyGetFromUrl("tag")) { // s'il y a des tags dans l'url,
+
+            $safeTag = getGetFromUrl("tag"); // régupérer les tags dans l'url,
+            $multiTags = explode(",",$safeTag); // en faire un array.
+
+            foreach ( $multiTags as $oneTag ) {
                 
-                $multiTags = explode(",",$safeTag);
+                $verifOneTag = queryThis("compareTagName",$oneTag); // Verifier que ce tag existe,
+
+                if ( $verifOneTag != '') { // si oui, l'ajouter.
+                    $tagList .= $verifOneTag.", ";
+                    array_push($tagListArray,$verifOneTag);
+                }
                 
-                foreach ( $multiTags as $oneTag ) {
-                    $tagList.= " \"".$oneTag."\"";
-                } unset($oneTag);
-                
-            } else {
-            
-                $tagList.= " \"".$safeTag."\"";
-                    
             }
+                
+            $tagList = rtrim($tagList,', ');
+        }
+        
+        
+        
+        /* Affichage du titre et selection des cards */
+        
+        if ($tagList != "") {
             
-            $myContent.= "Les résultats pour votre recherche".$tagList;
-
+            $myContent.= "<h1><span>Les résultats pour votre recherche : ".$tagList."</span></h1>";
+            
+            $personnesNumList = queryThis("getPersonnesParTags",$tagListArray,$affichageLength);
+                
+            if ( count($personnesNumList) > $affichageLength ) { $voirPlus = true; }
+            
+            
         } else {
-
-            $myContent.= "Quelques personnes de l'industrie du jeu vidéo";
+            
+            $myContent.= "<h1><span>Quelques personnes de l'industrie du jeu vidéo</span></h1>";
+            $maxRand = queryThis("nombrePersonnes")-1; 
+            $personnesNumList = array();
+            for ($i=0; $i<$affichageLength; $i++) {
+                array_push($personnesNumList,mt_rand(0,$maxRand));
+            }
+            $personnesNumList = array_unique($personnesNumList);
+            
+            $voirPlus = true;
             
         }
-        $myContent.= "</span></h1>";
+        foreach ($personnesNumList as $onePersonnesNum) {
+            array_push($cardSelection,queryThis("getPersonne",$onePersonnesNum,'profil'));
+        }
 
 
-        /* Cards selection */
-        
-        // TODO 0. trier les profils affichés si clic sur un tag.
-        // $cardSelection = array();
-        // if (testNotEmptyGetFromUrl("tag")) {
-        // } else {} // penser à retirer les bannies.
-
-        $cardSelection = array_rand($personne,8); // x personnes au hasard.
-        
         
         /* Cards html */
+        
         foreach ( $cardSelection as $oneCard ) {
-            $myContent.= "<a href=\"profil.php?num=".$personne[$oneCard][0]."\">";
+            $myContent.= "<a href=\"profil.php?num=".$oneCard['numero']."\">";
             $myContent.= "<div>";
-            $myContent.= "<img src=\"".$personne[$oneCard][12]."\">";
+            $myContent.= "<img src=\"".$oneCard['urlAvatar']."\">";
             $myContent.= "<span>";
-            if ($personne[$oneCard][5] != "") { $myContent.= $personne[$oneCard][5]." "; }
-            if ($personne[$oneCard][6] != "") { $myContent.= $personne[$oneCard][6]." "; }
-            $myContent.= $personne[$oneCard][7]."</span>";
+            if ($oneCard['prenom'] != "") { $myContent.= $oneCard['prenom']." "; }
+            if ($oneCard['pseudo'] != "") { $myContent.= $oneCard['pseudo']." "; }
+            $myContent.= $oneCard['nom']."</span>";
             $myContent.= "</div></a>";
         } unset($oneCard);
+        $myContent.= "</div></a>";
 
         
-        $myContent.= "</div></a><p><a href=\"\">Voir plus...</a></p>";
-
-
+        
+        /* Voir plus ? */
+        if ($voirPlus) { $myContent.= "<p><a href=\"\">Voir plus...</a></p>"; }
+        // TODO: ajouter un get ?voirPlus=longueur avec js, verifier longueur max.
+        // ou post ou session. :?
+        
+        
+        
         echo($myContent);
         
+        /*** Contenu d'une card dans Article :
+
+            <a href="profil.php?num=0">
+                <div>
+                    <img src="img/avatars/0.jpg"/>
+                        <span>Jeanne</span>
+                </div>
+            </a>
+            <p><a href="">Voir plus...</a></p>
+        
+        ***/
+        
     }
+
+
 
 ?>

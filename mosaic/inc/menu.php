@@ -21,7 +21,6 @@
     function removeTag(e,aTag) { // quand on clique sur un tag selectionné.
         
         e.preventDefault();
-
         var myLoc = document.location.href;
 
         if (myLoc.search(aTag)) { // si ce tag existe bien dans l'url,
@@ -56,41 +55,15 @@
 
     function fillMenu() {
         
-        $tags = getTag(-1);
-        
-        
-        
-        /* Tri des tags par nombre d'usage */
-
-        $tagsTries = array(); // array(indexDansTags=>nbUsages).
-        
-        foreach($tags as &$oneTagInfos) { // &$oneTagInfos et pas $oneTagInfos.
-            
-            $infosDuTag = array($oneTagInfos[0]=>$oneTagInfos[2]);
-            $tagsTries += $infosDuTag;
-            
-            // on est obligés de faire correspondre le nom à l'url..
-            $nomTagPourUrl = $oneTagInfos[1]; /*****************/// à faire.
-                
-            // cette info servira plus bas.
-            array_push($oneTagInfos,$nomTagPourUrl);
-            
-            /* /!\ On ne peut faire un array_push sur une valeur ($oneTagInfos) du tableau ($tags) passé en foreach que grace au & -> &$oneTagInfos. https://stackoverflow.com/questions/9920619/changing-value-inside-foreach-loop-doesnt-change-value-in-the-array-being-itera#9920684 "In order to be able to directly modify array elements within the loop precede $value with &. In that case the value will be assigned by reference." */ // Elle m'aura bien fait patiner celle là... -_-
-            
-        } unset($oneTagInfos); // vide $oneTagInfos.
-        
-        natsort($tagsTries); // cet array peut être trié.
-        $tagsTries = array_reverse($tagsTries,true);
-        
-        // raccourcir la liste à afficher :
         $offsetAffichage = 0;
         $lengthAffichage = 6;
-        $shortTags = array_slice($tagsTries,$offsetAffichage,$lengthAffichage,true);
+        $tags = queryThis("getTags",$lengthAffichage,$offsetAffichage);
+   
         
         
-        
-        /* Tags selectionnés */
-        
+        /* Tags dans l'url = tags à selectionner dans le menu */
+        $shortTags = $tags;
+        $tagSelectListUrl = array();
         $tagSelectList = array();
         $filtrerHtml = "<h3>Filtrer</h3>";
         
@@ -99,20 +72,32 @@
             // s'il y en a on doit pouvoir tous les déselectionner d'un coup.
             $filtrerHtml = "<a href='index.php'><h3>Défiltrer</h3></a>";
             
-            $safeGetTag = getGetFromUrl("tag");
-            $tagSelectList = (explode(",",$safeGetTag));
-            // ce tableau servira aussi plus bas pour insérer une classe.
             
-            // ils doivent forcément apparaitre dans le menu,
-            foreach($tags as $oneTagInfos) {
+            // s'il y a des tags dans l'url on vérifie qu'ils sont legits.
+            // $tagSelectList servira pour ajouter une classe de tag selectionné.
+            $safeGetTag = getGetFromUrl("tag");
+            $tagSelectListUrl = (explode(",",$safeGetTag));
+            
+            foreach ( $tagSelectListUrl as &$oneTag ) {
+                $verifOneTag = queryThis("compareTagName",$oneTag); 
+                if ( $verifOneTag != '') { array_push($tagSelectList,$verifOneTag); }
+            }
+            
+            
+            // si des tags sont dans l'url, ils devront forcément apparaitre dans la liste.
+            $tagExistAlready = array(); $tagsToAdd = array();
+
+            foreach($tags as $aTag) { // on va retirer ceux qui sont déjà dans la liste.
                 foreach($tagSelectList as $aSelectedTag) {
-                    if ($aSelectedTag == $oneTagInfos[3]) {
-                        $shortTags += array($oneTagInfos[0]=>$oneTagInfos[2]);
+                    if ($aTag['nomPourUrl'] == $aSelectedTag) {
+                        array_push($tagExistAlready,$aSelectedTag);
                     }
                 }
-                
-            } unset($oneTagInfos,$aSelectedTag);
-            
+            }
+            $tagsToAdd = array_diff($tagSelectList,$tagExistAlready);
+            foreach($tagsToAdd as $aTagToAdd) { // puis on va y ajouter ceux qui manquent.
+                    array_push($tags,queryThis("getOneTag",$aTagToAdd));
+            }
         }
         
 
@@ -122,30 +107,27 @@
         echo($filtrerHtml);
         echo("<ul>");
         
-        foreach ($shortTags as $tagIndex => $tagNbUsages) {
-            
-            $nomTag = $tags[$tagIndex][1];
-            $nomTagPourUrl = $tags[$tagIndex][3]; // obtenu dans le traitement des Tags selectionnés.
+        foreach ($tags as $aTagInfos) {
             
             // au clic sur le lien :
-            $tagOnclick = "' onclick='addTag(event,\"".$nomTagPourUrl."\")'";
+            $tagOnclick = "' onclick='addTag(event,\"".$aTagInfos['nomPourUrl']."\")'";
             
             // le tag est-il selectionné ?
             $tagClass= "";
-            if (in_array($nomTagPourUrl,$tagSelectList)) {
+            if (in_array($aTagInfos['nomPourUrl'],$tagSelectList)) {
                 $tagClass= " class='tagSelect' "; // on ajoute une classe
-                $tagOnclick = "' onclick='removeTag(event,\"".$nomTagPourUrl."\")'"; // on change l'event.
+                $tagOnclick = "' onclick='removeTag(event,\"".$aTagInfos['nomPourUrl']."\")'"; // on change l'event.
             }
             
             // affichage :
             echo(   "<li>
-                        <a href='?tag=".$nomTagPourUrl.$tagOnclick.$tagClass.">
-                            <span>".$tagNbUsages."</span>
-                            ".$nomTag."
+                        <a href='?tag=".$aTagInfos['nomPourUrl'].$tagOnclick.$tagClass.">
+                            <span>".$aTagInfos['nbUsages']."</span>
+                            ".$aTagInfos['nom']."
                         </a>
                     </li>"  ); // Plus lisible : <a href="?tag=graphisme" onclick="addTag(event,'Graphisme')" class="tagSelect">
  
-        } unset($tagNbUsages);
+        } unset($tags);
         
         echo("<p><a href=''>Voir plus...</a></p></ul>");
         
